@@ -1,0 +1,11 @@
+How to enter LISA
+
+ssh lgpu0017@lisa.surfsara.nl
+Q8pERYsTRqz7Cs9
+
+touch "script.extension" e.g. job.sh
+pico script.extension e.g. pico job.sh
+squeeze -u lgpu0017
+scontrol show job #jobID
+
+now wait for output file and analyse using pico outpufile_jobid.out
