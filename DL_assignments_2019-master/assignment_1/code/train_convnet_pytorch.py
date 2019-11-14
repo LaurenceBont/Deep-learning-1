@@ -73,8 +73,8 @@ def train():
   cifar10 = cifar10_utils.get_cifar10(DATA_DIR_DEFAULT)
 
   # load x_test and y_test (test data)
-  x_test = cifar10["test"].images
-  y_test = cifar10["test"].labels
+  x_test = cifar10["test"].images[:1000]
+  y_test = cifar10["test"].labels[:1000]
 
   #x_test = x_test.reshape(x_test.shape[0], -1)
 
@@ -83,12 +83,16 @@ def train():
   x_test = torch.tensor(x_test, requires_grad = False).type(dtype).to(device) #10000 x 3072 (32x32x3)
   y_test = torch.tensor(y_test, requires_grad = False).type(dtype).to(device) #10000 x 10
 
+  #x_test = torch.tensor(x_test, requires_grad = False).cuda() #10000 x 3072 (32x32x3)
+  #y_test = torch.tensor(y_test, requires_grad = False).cuda()
   model = ConvNet(3,10)
+  #model = ConvNet(3,10).cuda()
   loss = torch.nn.CrossEntropyLoss()
   optimizer = torch.optim.Adam(model.parameters(), lr = FLAGS.learning_rate, weight_decay=1e-6)
   
   max_steps = FLAGS.max_steps
   train_accs, train_losses, test_accs, test_losses, steps = [], [], [], [], []
+  torch.cuda.empty_cache()
   for step in range(max_steps):
       #print(epoch)
       model.train()
@@ -96,21 +100,25 @@ def train():
       #x = x.reshape(x.shape[0], -1)
       x = torch.tensor(x).type(dtype).to(device)
       y = torch.tensor(y).type(dtype).to(device)
-
+      #x = torch.tensor(x).cuda()
+      #y = torch.tensor(y).cuda()
       out = model.forward(x)
       
       loss_training = loss(out, y.argmax(dim=1))
       
       #backward propagation
+      optimizer.zero_grad()
       loss_training.backward()
       optimizer.step()
-
+      
       
       if step % FLAGS.eval_freq == 0:
+        model.eval()
         steps.append(step)
         train_loss = loss_training
         train_losses.append(train_loss)
-        train_accs.append(accuracy(out, y))
+        train_acc = accuracy(out, y)
+        train_accs.append(train_acc)
 
         # now test on x_test, y_test
         out = model.forward(x_test)
@@ -120,8 +128,8 @@ def train():
         test_losses.append(test_loss)
 
         print(" === Current step {} ===".format(step))
-        print("Train error: {} Validation error: {} Validation accuracy: {}".format(train_loss, test_loss, test_acc))
-
+        print("Train error: {} Validation error: {} Train accuracy: {} Validation accuracy: {}".format(train_loss, test_loss, train_acc, test_acc))
+  
   with open('outfile', 'wb') as fp:
     pickle.dump([train_accs, train_losses, test_accs, test_losses, steps], fp)
  
